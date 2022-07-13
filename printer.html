@@ -8,15 +8,17 @@
     <script type="module">
 
       let now = new Date();
+      let count = 0;
       const dest = document.getElementById('qrc');
 
-      let qrc = new QRCode(dest, now.toString(), {useSVG: true});
+      let qrc = new QRCode(dest, count, {useSVG: true});
 
       function onTick() {
         const now = new Date();
-        console.log('tick', now);
+        console.log('tick', now, count);
 
-        qrc.makeCode(now.toString());
+        qrc.makeCode(count.toString());
+        count++;
       }
 
       window.addEventListener("load", () => {
