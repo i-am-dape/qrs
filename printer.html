@@ -7,19 +7,16 @@
 
     <script type="module">
 
-      const div = document.getElementById('qrc');
-      var qrc = new QRCode(div, now.toString());
+      let now = new Date();
+      const dest = document.getElementById('qrc');
+
+      let qrc = new QRCode(dest, now.toString(), {useSVG: true});
 
       function onTick() {
         const now = new Date();
         console.log('tick', now);
 
-        console.log(div.childElementCount);
-        if (div.childElementCount > 0) {
-          div.children[0].remove();
-          div.children[1].remove();
-        }
-
+        qrc.makeCode(now.toString());
       }
 
       window.addEventListener("load", () => {

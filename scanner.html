@@ -20,7 +20,13 @@
         let inputs = await videoInputs();
         console.log(inputs);
 
-        let constraints = {audio:false, video: {deviceId: inputs[0].deviceId}};
+        const params = (new URL(document.location).searchParams);
+        let dix = params.get('dix');
+        if (dix == null) {
+          dix = 0;
+        }
+
+        let constraints = {audio:false, video: {deviceId: inputs[dix].deviceId}};
 
         let videoTag = document.getElementById('vid');
         videoTag.srcObject = await navigator.mediaDevices.getUserMedia(constraints);
