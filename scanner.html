@@ -1,0 +1,43 @@
+<html>
+  <meta charset="utf-8">
+  <body>
+    <video autoplay="true" id="vid" />
+
+    <script type="module">
+      import QRS from "./qr-scanner.min.js";
+
+      async function videoInputs() {
+        let devices = await navigator.mediaDevices.enumerateDevices();
+        devices.forEach(d => console.log(d));
+        return devices.filter(device => device.kind == 'videoinput');
+      }
+
+      function onQrCode(result) {
+        console.log(result);
+      }
+
+      async function run() {
+        let inputs = await videoInputs();
+        console.log(inputs);
+
+        let constraints = {audio:false, video: {deviceId: inputs[0].deviceId}};
+
+        let videoTag = document.getElementById('vid');
+        videoTag.srcObject = await navigator.mediaDevices.getUserMedia(constraints);
+
+        console.log('creating scanner');
+        const qrsOpts = {highlightScanRegion:true};
+        const qrs = new QRS(videoTag, onQrCode);
+        console.log('starting scanner');
+        await qrs.start();
+        console.log('started scanner');
+        await qrs.start();
+
+      }
+
+      run();
+
+    </script>
+  </body>
+</html>
+
