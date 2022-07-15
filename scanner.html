@@ -13,8 +13,70 @@
       }
 
       function onQrCode(result) {
-        console.log(result);
+        if (result.data == undefined) {
+          return;
+        }
+
+        console.log(result.data);
+
+
       }
+
+      // To send messages through a one-way QR code:
+      // - the process is inherently driven by a human, we assume that they will show the
+      //   screen to the scanner (within the scan area) until the transfer is successful
+      //   and the receiving sice can move the process further. When this happens the user
+      //   will stop presenting the screen, we therefore don't need to have any ACKs etc.
+      //
+      // - the more data we add to a single QR code the higher the data density of the
+      //   code becomes, as density grows the read error rate increases. We therefore need
+      //   to start at a reasonable density and slowly decrease the density as time progress.
+      //
+      // - the rate of QR code changes also increase the risk of a scan failure, we therefore
+      //   need to start at a reasonable rate and decrease. The scanning rate seem to be affected
+      //   by the scanning platform and available APIs.
+      //
+      // - the data sent belongs to a single meeting instance, to minimize the risk of human
+      //   error we therefore verify that the data transfered belongs to the right meeting.
+      //   This is achieved with an HMAC using the meeting code as key.
+      //
+      // - a single frame of data is 256b
+      //
+      // - we first reduce send rate and then reduce data density
+      //
+
+      // implemnetation plan
+      // - build in browser tested version, it needs to work in a test setup before
+      //   we try to transfer between two devices.
+
+      // sending:
+      // - turn all data into packets and then add a final packet with a transfer checksum
+      //
+      // receiving:
+      // - recieve packet by packet until all received, check that the checksum matches
+      //   the received data
+      //
+      // packets are received in increasing order until the checksum is received
+      // all frames are sent multiple times to enable a receiver to start receiving
+      // at any point or to drop a single packet for a frame and still be able to receover
+      // 
+      // if we don't add a header to each packet then we will not be able to detect when
+      // multiple packaets with the same data is sent. oops!
+      // 
+      // QR codes need a 10:1 distance to size ratio
+      //
+      // a frame is made up by individual packets, a packet is a single qr code that
+      // is shown for n milliseconds. We start with higher data density and move towards
+      // lower density, we then start over at the initial data density but showing each
+      // frame a little longer.
+      //
+      // for this test we only use text so each packet is prefixed with the packet
+      // number using ':' as a separator. For an actual implementation we could use binary
+      // data instead of text.
+
+        
+      const c1 = "hello";
+      console.log(c1.slice(2,8));
 
       async function run() {
         let inputs = await videoInputs();

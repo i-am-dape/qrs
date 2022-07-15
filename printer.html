@@ -11,18 +11,57 @@
       let count = 0;
       const dest = document.getElementById('qrc');
 
+      let interval = 200;
+      let iid = 0;
       let qrc = new QRCode(dest, count, {useSVG: true});
 
-      function onTick() {
-        const now = new Date();
-        console.log('tick', now, count);
+      class SendFrame {
+        constructor(data, width) {
+          this.data = data;
+          this.width = width;
+          this.at = 0;
+          this.packetNo = 0;
+        }
 
-        qrc.makeCode(count.toString());
-        count++;
+        next() {
+          if (this.at >= this.data.length) {
+            return null;
+          }
+        
+          const packet = this.data.slice(this.at, this.at + this.width);
+          this.at += this.width; 
+          const packetNo = this.packetNo;
+          this.packetNo++;
+          return `${packetNo}:${packet}`;
+        }
+      }
+
+      const signedData = "12323434545612312323423434534563456745674567";
+      let width = 16;
+      let frame = new SendFrame(signedData, width);
+
+      function sendNext() {
+        if (width <= 0) {
+          width = 16;
+          window.clearInterval(iid);
+          interval += 200;
+          iid = window.setInterval(sendNext, interval);
+          frame = new SendFrame(signedData, width);
+          return;
+        }
+        
+        const packet = frame.next();
+        if (packet == null) {
+          width -= 4;
+          frame = new SendFrame(signedData, width);
+          return;
+        }
+        console.log(packet);
+        qrc.makeCode(packet);
       }
 
       window.addEventListener("load", () => {
-        window.setInterval(onTick, 500);
+        iid = window.setInterval(sendNext, interval);
       })
 
     </script>
