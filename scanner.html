@@ -67,6 +67,14 @@
       // for this test we only use text so each packet is prefixed with the packet
       // number using ':' as a separator. For an actual implementation we could use binary
       // data instead of text.
+      //
+      // practical tests indicate that the scanner works at a high rate even at longer
+      // distances. So successful scans will contain many many duplicates.
+      //
+      // The goal is to create a demo that transfers time from one device to another.
+      // The receiving sice can then show the difference in time between it's system
+      // time and the time just received. This is not strictly true :) but it allow
+      // us to somewhat demonstrate what latency we can expect for small data sets.
 
         
       const c1 = "hello";

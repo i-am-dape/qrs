@@ -36,34 +36,95 @@
         }
       }
 
-      const signedData = (new Date()).toString();
-      let width = 16;
-      let frame = new SendFrame(signedData, width);
+      // Packet-0 holds data about the entire frame
+      // Each frame is sent multiple times at each density
+      // We then send at same rate but different density
+      // We then reduce rate and restart at high density
 
-      function sendNext() {
-        if (width <= 0) {
-          width = 16;
-          window.clearInterval(iid);
-          interval += 200;
-          iid = window.setInterval(sendNext, interval);
-          frame = new SendFrame(signedData, width);
-          return;
+      class Result {
+        constructor(packet, next) {
+          this.packet = packet;
+          this.next = next;
         }
+      };
+
+      class Controller {
+         
+
+        constructor(data) {
+          this.data = data;
+          this.at = -1;
+          this.packet = 0;
+          this.maxWidth = 16;
+          this.width = this.maxWidth;
+          this.minDelay = 250;
+          this.maxDelay = 3000;
+          this.delay = this.minDelay;
+          this.attempt = 0;
+          this.maxAttempts = 4;
+        }
+
+        next() {
+
+          if (this.at >= this.data.length) {
+            //...we have reached the end of the data, this is where we evaluate what to
+            // do next; modify width, delay or just do a new attempt.
+            this.at = -1;
+            this.packet = 0;
+            this.attempt++;
+
+            if (this.attempt >= this.maxAttempts) {
+              //...we have tried the current width a # of times, now reduce density and start over.
+              this.attempt = 0;
+              this.width -= 4;
+
+              if (this.width <= 0) {
+                //...at minimal data density, bump delay and try again.
+                this.delay += 250;
+                this.width = this.maxWidth;
+
+                if (this.delay >= this.maxDelay) {
+                  //...start over, at min data density and max delay.
+                  this.delay = this.minDelay;
+                }
+              }
+            }
+          }
+
+          if (this.at < 0) {
+            this.at = 0;
+            let packets = Math.ceil(this.data.length / this.width);
+            const header = `0:${packets}|${this.width}`;
+            return new Result(header, this.delay);
+          }
         
-        const packet = frame.next();
-        if (packet == null) {
-          width -= 4;
-          frame = new SendFrame(signedData, width);
-          return;
+          this.packet++;
+          const data = this.data.slice(this.at, this.at + this.width);
+          const packet = `${this.packet}:${data}`;
+          this.at += this.width;
+          return new Result(packet, this.delay);
         }
-        console.log(packet);
-        qrc.makeCode(packet);
+      }
+
+      let ctrl = new Controller((new Date()).toString());
+
+      function update() {
+        let res = ctrl.next();
+        console.log(res);
+        window.setTimeout(update, res.next)
+        qrc.makeCode(res.packet);
+
+      }
+
+      function tick() {
+        console.log("tick");
+        ctrl = new Controller((new Date()).toString());
       }
 
       window.addEventListener("load", () => {
-        iid = window.setInterval(sendNext, interval);
-      })
-
+        update();
+        window.setInterval(tick, 30 * 1000);
+      }) 
     </script>
   </body>
 </html>
