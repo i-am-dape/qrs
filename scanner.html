@@ -12,8 +12,100 @@
         return devices.filter(device => device.kind == 'videoinput');
       }
 
+      let waitForP0 = true;
+      let remainingPackets = -1;
+      let width = -1;
+      let packets = {};
+      let last = '';
+      let processed = {};
+
+      function parsePacketZero(packet) {
+        if (!packet.startsWith('0:')) {
+          throw "not a p0 packet";
+        }
+
+        // 0:width|count
+        let widthAt = 1;
+        let countAt = packet.indexOf('|');
+        let width = packet.slice(widthAt+1, countAt);
+        let count = packet.slice(countAt+1);
+        
+        return { count: parseInt(width), width: parseInt(count) };
+      }
+
+      function isPacketZero(packet) {
+        return packet.startsWith('0:');
+      }
+
+      function parsePacket(packet) {
+        let sepAt = packet.indexOf(':');
+        return { at: parseInt(packet.slice(0, sepAt)), data: packet.slice(sepAt + 1) };
+      }
+
       function onQrCode(result) {
         console.log(result);
+        let cur = result.data;
+        if (last === cur) {
+          // There shouldn't be any repeated data so if cur is same as last
+          // then we can just skip it since just processeded it.
+          return;
+        }
+
+        if (processed[cur] === true) {
+          // Since we do multiple attempts at the same widht there is always
+          // a risk that we already processed the current data.
+          return;
+        }
+        processed[cur] = true;
+        //console.log(cur);
+
+        // When we get here we know that the data haven't already been processed
+        // or is identical to previous line. The check again previous line is
+        // really just an optimization since we know that the same data apprears
+        // many time in a row at normal operation.
+
+        if (isPacketZero(cur)) {
+          //...width may have changed and then we need to throw away any data
+          // captured so far.
+          let p0 = parsePacketZero(cur);
+          if (p0.width != width) {
+            //...all data so far is invalid, start over!
+            remainingPackets = p0.count;
+            width = p0.width;
+            packets = {};
+            processed = {};
+            last = cur;
+            return;
+          }
+        }
+
+        let p = parsePacket(cur);
+        if (p.data.length != width) {
+          //...width was changed; return here and wait for packet zero
+          return;
+        }
+        
+        if (packets[p.at] != null) {
+          console.error(cur, p);
+          throw "should never ever happen";
+        }
+
+        packets[p.at] = p.data;
+        remainingPackets--;
+        if (remainingPackets == 0) {
+          let full = '';
+          for (let k in packets) {
+            full += packets[k];
+          }
+          console.log(full);
+          remainingPackets = -1;
+          width = -1;
+          packets = {};
+          processed = {};
+          last = '';
+        }
+
+        last = cur; 
       }
 
       // To send messages through a one-way QR code:
@@ -97,7 +189,7 @@
 
         console.log('creating scanner');
         const qrsOpts = {highlightScanRegion:true};
-        const qrs = new QRS(videoTag, onQrCode);
+        const qrs = new QRS(videoTag, onQrCode, {highlightScanRegion: true});
         console.log('starting scanner');
         await qrs.start();
         console.log('started scanner');
